@@ -74,6 +74,10 @@ struct ContentView: View {
                 Task { await newStore.sync() }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .deeperDidLogout)) { _ in
+            self.api = nil
+            self.store = nil
+        }
     }
 
     private var sidebar: some View {
