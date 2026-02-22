@@ -188,6 +188,22 @@ final class BeeperAPIClient {
         }
         return allChats
     }
+    // MARK: - Focus (Open Chat in Beeper)
+
+    func focusChat(chatID: String) async throws {
+        let url = URL(string: baseURL + "/v1/focus")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: String] = ["chatId": chatID]
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw BeeperAPIError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0, message: message)
+        }
+    }
 }
 
 // MARK: - Errors

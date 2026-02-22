@@ -72,7 +72,7 @@ struct PeopleView: View {
                     )
                 } else {
                     List(Array(filteredPeople.enumerated()), id: \.element.id, selection: $selectedPerson) { index, person in
-                        PersonRow(person: person, rank: index + 1)
+                        PersonRow(person: person, rank: index + 1, store: store)
                             .tag(person)
                     }
                 }
@@ -119,6 +119,7 @@ struct CategoryPill: View {
 struct PersonRow: View {
     let person: MergedPerson
     let rank: Int
+    var store: DataStore?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -140,18 +141,29 @@ struct PersonRow: View {
                 }
 
                 FlowLayout(spacing: 4) {
-                    ForEach(person.platforms) { platform in
+                    ForEach(person.presences) { presence in
                         HStack(spacing: 2) {
-                            Image(systemName: platform.iconName)
+                            Image(systemName: presence.platform.iconName)
                                 .font(.system(size: 9))
-                            Text(platform.displayName)
+                            Text(presence.platform.displayName)
                                 .font(.system(size: 10))
+                            if let chatID = presence.chatIDs.first, store != nil {
+                                Button {
+                                    Task {
+                                        try? await store?.api?.focusChat(chatID: chatID)
+                                    }
+                                } label: {
+                                    Image(systemName: "bubble.left.fill")
+                                        .font(.system(size: 8))
+                                }
+                                .buttonStyle(.borderless)
+                            }
                         }
                         .fixedSize()
-                        .foregroundStyle(platform.color)
+                        .foregroundStyle(presence.platform.color)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(platform.color.opacity(0.12), in: Capsule())
+                        .background(presence.platform.color.opacity(0.12), in: Capsule())
                     }
                 }
             }

@@ -29,135 +29,184 @@ struct SettingsView: View {
     @State private var showAdvancedWindow = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 32) {
-                // MARK: - Header
-                VStack(spacing: 12) {
-                    Image(systemName: "chart.bar.xaxis.ascending")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.tint)
-                    Text("Deeper")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    Text("Messaging stats powered by Beeper Desktop API")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 40)
-
-                // MARK: - Auth Options
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Connect Beeper Desktop")
-                        .font(.headline)
-                    Text("Deeper will connect to Beeper Desktop securely. Your data never leaves your device.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if isCheckingAPI {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Checking Beeper Desktop API availability…")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else if !isAPIAvailable {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Turn on Beeper Desktop API first", systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                            Text("1. Open Beeper Desktop")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("2. Go to Settings → Developers")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("3. Turn on Beeper Desktop API")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            HStack(spacing: 8) {
-                                Button("Open Beeper") {
-                                    if let url = URL(string: "beeper://connect") {
-                                        openURL(url)
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-
-                                Button("Refresh") {
-                                    Task { await refreshAPIAvailability() }
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                        .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    }
-
-                    Button(action: authorizeWithBeeper) {
-                        if isAuthorizing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Label("Connect Beeper Desktop API", systemImage: "link")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isAuthorizing || isConnecting || isCheckingAPI || !isAPIAvailable)
-
-                    Button("Advanced") {
-                        showAdvancedWindow = true
-                    }
-                    .buttonStyle(.bordered)
-
-                    Link("Need help? Open setup guide", destination: URL(string: "https://developers.beeper.com/desktop-api")!)
-                        .font(.caption)
-
-                    if let error {
-                        Label("Couldn’t connect: \(error)", systemImage: "exclamationmark.triangle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .padding()
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .glassEffect(.regular, in: .rect(cornerRadius: 16))
-                .frame(maxWidth: 500)
-
-                // MARK: - Connection Info
-                if let info = connectionInfo {
-                    VStack(alignment: .leading, spacing: 12) {
+        Form {
+            // MARK: - Connection Section
+            Section {
+                if hasExistingToken, let info = connectionInfo {
+                    // Connected state
+                    LabeledContent("Status") {
                         Label("Connected", systemImage: "checkmark.circle.fill")
-                            .font(.headline)
                             .foregroundStyle(.green)
-
-                        Divider()
-
-                        InfoRow(label: "App", value: "\(info.app.name) v\(info.app.version)")
-                        InfoRow(label: "Platform", value: "\(info.platform.os) (\(info.platform.arch))")
-                        InfoRow(label: "Server", value: info.server.base_url)
-                        InfoRow(label: "Status", value: info.server.status)
                     }
-                    .padding()
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                    .glassEffect(.regular, in: .rect(cornerRadius: 16))
-                    .frame(maxWidth: 500)
-                }
+                    LabeledContent("App") {
+                        Text("\(info.app.name) v\(info.app.version)")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Platform") {
+                        Text("\(info.platform.os) (\(info.platform.arch))")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Server") {
+                        Text(info.server.base_url)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                } else if isCheckingAPI {
+                    LabeledContent("Status") {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Checking API…")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else if !isAPIAvailable {
+                    LabeledContent("Status") {
+                        Label("API Unavailable", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
 
-                // MARK: - Disconnect
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Enable Beeper Desktop API:")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("1. Open Beeper Desktop → Settings")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("2. Go to the Developers tab")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("3. Toggle Beeper Desktop API to On")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    LabeledContent("Status") {
+                        Label("Ready to connect", systemImage: "circle.dotted")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Beeper Desktop")
+            }
+
+            // MARK: - Actions Section
+            Section {
                 if hasExistingToken {
                     Button(role: .destructive) {
                         disconnect()
                     } label: {
-                        Label("Disconnect & Clear Token", systemImage: "xmark.circle")
+                        Text("Disconnect")
                     }
-                    .buttonStyle(.bordered)
+                } else {
+                    Button(action: authorizeWithBeeper) {
+                        if isAuthorizing {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Connecting…")
+                            }
+                        } else {
+                            Text("Connect")
+                        }
+                    }
+                    .disabled(isAuthorizing || isConnecting || isCheckingAPI || !isAPIAvailable)
+
+                    if !isAPIAvailable && !isCheckingAPI {
+                        HStack(spacing: 8) {
+                            Button("Open Beeper") {
+                                if let url = URL(string: "beeper://connect") {
+                                    openURL(url)
+                                }
+                            }
+                            Button("Refresh") {
+                                Task { await refreshAPIAvailability() }
+                            }
+                        }
+                    }
+
+                    Button("Advanced…") {
+                        showAdvancedWindow = true
+                    }
                 }
 
-                Spacer()
+                if let error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            } header: {
+                Text("Connection")
             }
-            .padding(24)
-            .frame(maxWidth: .infinity)
+
+            // MARK: - About Section
+            Section {
+                LabeledContent("Version") {
+                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Build") {
+                    Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Author") {
+                    Text("Fatih Kadir Akin")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("License") {
+                    Text("MIT")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("About")
+            }
+
+            Section {
+                Link(destination: URL(string: "https://github.com/f/deeper")!) {
+                    LabeledContent("Source Code") {
+                        HStack(spacing: 4) {
+                            Text("github.com/f/deeper")
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                Link(destination: URL(string: "https://github.com/f/deeper/releases")!) {
+                    LabeledContent("Releases") {
+                        HStack(spacing: 4) {
+                            Text("Changelog & Downloads")
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                Link(destination: URL(string: "https://developers.beeper.com/desktop-api")!) {
+                    LabeledContent("Beeper API Docs") {
+                        HStack(spacing: 4) {
+                            Text("developers.beeper.com")
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                Link(destination: URL(string: "https://github.com/f/deeper/issues")!) {
+                    LabeledContent("Report an Issue") {
+                        HStack(spacing: 4) {
+                            Text("GitHub Issues")
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Links")
+            }
         }
+        .formStyle(.grouped)
         .navigationTitle("Settings")
         .onAppear {
             Task {

@@ -38,6 +38,12 @@ final class DataStore {
     var messagesSentToday: Int = 0
     var messagesReceivedToday: Int = 0
 
+    // MARK: - Time Range Stats
+    var todayStats: TimeRangeStats?
+    var lastWeekStats: TimeRangeStats?
+    var isFetchingToday = false
+    var isFetchingLastWeek = false
+
     // MARK: - State
     var isLoading = false
     var loadingProgress: String?
@@ -45,7 +51,7 @@ final class DataStore {
     var lastSyncDate: Date?
     var isCached: Bool { lastSyncDate != nil }
 
-    private let api: BeeperAPIClient
+    let api: BeeperAPIClient?
 
     init(api: BeeperAPIClient) {
         self.api = api
@@ -59,6 +65,7 @@ final class DataStore {
     }
 
     func sync() async {
+        guard let api else { return }
         isLoading = true
         error = nil
         loadingProgress = "Fetching accounts..."
@@ -257,5 +264,178 @@ final class DataStore {
 
         loadingProgress = nil
         isLoading = false
+
+        // Fetch time range stats after main sync completes
+        await fetchTodayStats()
+        await fetchLastWeekStats()
+    }
+
+    // MARK: - Time Range Fetching
+
+    func fetchTodayStats() async {
+        guard !isFetchingToday else { return }
+        isFetchingToday = true
+        defer { isFetchingToday = false }
+
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        do {
+            todayStats = try await fetchTimeRangeStats(after: start, before: Date())
+        } catch {
+        }
+    }
+
+    func fetchLastWeekStats() async {
+        guard !isFetchingLastWeek else { return }
+        isFetchingLastWeek = true
+        defer { isFetchingLastWeek = false }
+
+        let calendar = Calendar.current
+        let now = Date()
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        do {
+            lastWeekStats = try await fetchTimeRangeStats(after: weekAgo, before: now)
+        } catch {
+        }
+    }
+
+    private func fetchTimeRangeStats(after: Date, before: Date) async throws -> TimeRangeStats {
+        guard let api else { throw BeeperAPIError.invalidResponse }
+        let calendar = Calendar.current
+        // Fetch messages after start date (paginated), filter by before date locally
+        var allMessages: [BeeperMessage] = []
+        var cursor: String?
+        while true {
+            let resp = try await api.searchMessages(
+                dateAfter: after,
+                limit: 20, cursor: cursor,
+                direction: cursor != nil ? "before" : nil
+            )
+            let filtered = resp.items.filter { $0.timestamp <= before }
+            allMessages.append(contentsOf: filtered)
+            guard resp.hasMore, let next = resp.oldestCursor else { break }
+            cursor = next
+        }
+        // Categorize sent vs received + per-chat ghost tracking
+        var totalSent = 0
+        var totalReceived = 0
+        var platformSent: [Platform: Int] = [:]
+        var platformReceived: [Platform: Int] = [:]
+        var hourly: [Int: Int] = [:]
+        var daily: [Date: Int] = [:]
+
+        // Per-chat tracking for ghost detection
+        struct ChatActivity {
+            var chatID: String
+            var senderName: String?
+            var platform: Platform
+            var sent: Int = 0
+            var received: Int = 0
+        }
+        var chatMap: [String: ChatActivity] = [:]
+
+        for msg in allMessages {
+            let p = Platform.from(accountID: msg.accountID)
+            if msg.isSender == true {
+                totalSent += 1
+                platformSent[p, default: 0] += 1
+            } else {
+                totalReceived += 1
+                platformReceived[p, default: 0] += 1
+            }
+            let h = calendar.component(.hour, from: msg.timestamp)
+            hourly[h, default: 0] += 1
+            let day = calendar.startOfDay(for: msg.timestamp)
+            daily[day, default: 0] += 1
+
+            var activity = chatMap[msg.chatID] ?? ChatActivity(chatID: msg.chatID, platform: p)
+            if msg.isSender == true {
+                activity.sent += 1
+            } else {
+                activity.received += 1
+                if activity.senderName == nil { activity.senderName = msg.senderName }
+            }
+            chatMap[msg.chatID] = activity
+        }
+
+        // Ghost detection: chats with one-way messages
+        let theyGhostMe = chatMap.values
+            .filter { $0.sent > 0 && $0.received == 0 }
+            .sorted { $0.sent > $1.sent }
+            .map { TimeRangeStats.GhostEntry(name: $0.senderName ?? $0.chatID, platform: $0.platform, messageCount: $0.sent) }
+
+        let iGhostThem = chatMap.values
+            .filter { $0.received > 0 && $0.sent == 0 }
+            .sorted { $0.received > $1.received }
+            .map { TimeRangeStats.GhostEntry(name: $0.senderName ?? $0.chatID, platform: $0.platform, messageCount: $0.received) }
+
+        // Platform breakdowns
+        let allPlatforms = Set(platformSent.keys).union(platformReceived.keys)
+        let platformBreakdowns = allPlatforms.map { p in
+            TimeRangeStats.PlatformBreakdown(
+                platform: p,
+                sent: platformSent[p] ?? 0,
+                received: platformReceived[p] ?? 0
+            )
+        }.sorted { $0.total > $1.total }
+
+        let hourlyPoints = (0..<24).map { TimeRangeStats.HourlyPoint(hour: $0, count: hourly[$0] ?? 0) }
+        let dailyPoints = daily.map { TimeRangeStats.DailyPoint(date: $0.key, count: $0.value) }
+            .sorted { $0.date < $1.date }
+        let uniqueChats = Set(allMessages.map(\.chatID))
+
+        return TimeRangeStats(
+            totalSent: totalSent,
+            totalReceived: totalReceived,
+            platformBreakdowns: platformBreakdowns,
+            hourlyPoints: hourlyPoints,
+            dailyPoints: dailyPoints,
+            activeChats: uniqueChats.count,
+            theyGhostMe: theyGhostMe,
+            iGhostThem: iGhostThem,
+            fetchedAt: Date()
+        )
+    }
+}
+
+// MARK: - TimeRangeStats
+
+struct TimeRangeStats {
+    let totalSent: Int
+    let totalReceived: Int
+    var totalMessages: Int { totalSent + totalReceived }
+    let platformBreakdowns: [PlatformBreakdown]
+    let hourlyPoints: [HourlyPoint]
+    let dailyPoints: [DailyPoint]
+    let activeChats: Int
+    let theyGhostMe: [GhostEntry]
+    let iGhostThem: [GhostEntry]
+    let fetchedAt: Date
+
+    struct PlatformBreakdown: Identifiable {
+        let platform: Platform
+        let sent: Int
+        let received: Int
+        var total: Int { sent + received }
+        var id: Platform { platform }
+    }
+
+    struct HourlyPoint: Identifiable {
+        let hour: Int
+        let count: Int
+        var id: Int { hour }
+    }
+
+    struct DailyPoint: Identifiable {
+        let date: Date
+        let count: Int
+        var id: Date { date }
+    }
+
+    struct GhostEntry: Identifiable {
+        let name: String
+        let platform: Platform
+        let messageCount: Int
+        var id: String { "\(name)-\(platform.rawValue)" }
     }
 }

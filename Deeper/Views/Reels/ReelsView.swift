@@ -92,7 +92,7 @@ struct ReelsView: View {
                         Text("Reels Leaderboard")
                             .font(.headline)
 
-                        ForEach(Array(store.reelEntries.enumerated()), id: \.element.id) { index, entry in
+                        ForEach(Array(store.reelEntries.prefix(50).enumerated()), id: \.element.id) { index, entry in
                             HStack(spacing: 12) {
                                 Text("#\(index + 1)")
                                     .font(.caption)

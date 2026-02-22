@@ -9,6 +9,8 @@ import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
+    case today = "Today"
+    case thisWeek = "This Week"
     case people = "People"
     case groups = "Groups"
     case platforms = "Platforms"
@@ -19,6 +21,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .dashboard: "chart.bar.fill"
+        case .today: "sun.max.fill"
+        case .thisWeek: "calendar"
         case .people: "person.3.fill"
         case .groups: "person.3.sequence.fill"
         case .platforms: "app.connected.to.app.below.fill"
@@ -31,6 +35,7 @@ struct ContentView: View {
     @State private var selection: SidebarItem? = .dashboard
     @State var api: BeeperAPIClient?
     @State var store: DataStore?
+    @State private var hasInitialized = false
 
     var body: some View {
         Group {
@@ -57,7 +62,7 @@ struct ContentView: View {
                     }
                 }
             } else {
-                SettingsView(onConnect: { client in
+                WelcomeView(onConnect: { client in
                     self.api = client
                     let newStore = DataStore(api: client)
                     self.store = newStore
@@ -66,18 +71,20 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            if let token = KeychainHelper.loadToken() {
-                let baseURL = KeychainHelper.loadBaseURL() ?? "http://localhost:23373"
-                let client = BeeperAPIClient(baseURL: baseURL, token: token)
-                self.api = client
-                let newStore = DataStore(api: client)
-                self.store = newStore
-                Task { await newStore.sync() }
-            }
+            guard !hasInitialized else { return }
+            hasInitialized = true
+            guard let token = KeychainHelper.loadToken() else { return }
+            let baseURL = KeychainHelper.loadBaseURL() ?? "http://localhost:23373"
+            let client = BeeperAPIClient(baseURL: baseURL, token: token)
+            self.api = client
+            let newStore = DataStore(api: client)
+            self.store = newStore
+            Task { await newStore.sync() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .deeperDidLogout)) { _ in
             self.api = nil
             self.store = nil
+            self.hasInitialized = false
         }
     }
 
@@ -95,6 +102,24 @@ struct ContentView: View {
         switch selection {
         case .dashboard:
             DashboardView(store: store)
+        case .today:
+            TimeRangeView(
+                title: "Today",
+                store: store,
+                stats: store.todayStats,
+                isFetching: store.isFetchingToday,
+                showDaily: false,
+                onRefresh: { await store.fetchTodayStats() }
+            )
+        case .thisWeek:
+            TimeRangeView(
+                title: "This Week",
+                store: store,
+                stats: store.lastWeekStats,
+                isFetching: store.isFetchingLastWeek,
+                showDaily: true,
+                onRefresh: { await store.fetchLastWeekStats() }
+            )
         case .people:
             PeopleView(store: store)
         case .groups:
