@@ -32,6 +32,8 @@ enum AnalyticsDateRange: String, CaseIterable, Identifiable, Codable {
 struct TimestampedText: Codable {
     let text: String
     let timestamp: Date
+    let chatID: String
+    let isSender: Bool
 }
 
 struct TimestampedResponse: Identifiable, Codable {

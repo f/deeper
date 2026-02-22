@@ -5,11 +5,11 @@
 <h1 align="center">Deeper</h1>
 
 <p align="center">
-  <strong>A macOS messaging analytics app for Beeper — visualize your conversations across every platform.</strong>
+  <strong>A macOS messaging analytics app for Beeper — visualize your conversations across every platform, with on-device AI.</strong>
 </p>
 
 <p align="center">
-  See who you talk to most, discover your active hours, find ghosting patterns, and explore group dynamics.
+  See who you talk to most, discover your active hours, find ghosting patterns, explore group dynamics, and get AI-powered conversation summaries.
 </p>
 
 <p align="center">
@@ -25,6 +25,8 @@
 ## What is Deeper?
 
 Deeper connects to your local [Beeper](https://beeper.com) Desktop app and turns your messaging data into beautiful, interactive analytics. It merges contacts across platforms (iMessage, WhatsApp, Instagram, Telegram, Signal, X/Twitter, and more), analyzes sent vs received message patterns, and visualizes everything with native macOS charts and Liquid Glass effects.
+
+Deeper uses **Apple Intelligence (on-device)** to summarize your conversations — no cloud, no API keys, no data leaves your Mac. The Foundation Models framework runs entirely on your Apple Silicon, keeping everything private by design.
 
 All data stays on your machine. Deeper talks only to your local Beeper Desktop instance — nothing is sent to any server.
 
@@ -55,6 +57,9 @@ brew install f/tap/deeper
 - **Connection type badges** — two-way, they ghost, I ghost, inactive
 - **Category filters** — filter by connection type
 - **Detail view** — per-person platform breakdown, reciprocity percentage, connection analysis
+- **Per-person response time** — average reply time for you and the other person
+- **Apple Intelligence summary** — on-device AI conversation summary with animated glow border
+- **Per-person phrase analytics** — word cloud and stats for words you use with each person
 
 ### Groups
 - **Most active groups** — ranked by message volume with sent/received counts
@@ -67,16 +72,38 @@ brew install f/tap/deeper
 - **Groups vs DMs** — grouped bar chart per platform
 - **Platform detail cards** — chat count, unread, DMs, groups, top contacts per platform
 
+### Phrases
+- **Word frequency analysis** — top words and phrases you use most
+- **Word cloud** — visual representation of your most-used words
+- **Stats** — total words, unique words, average message length
+- **Date range filtering** — filter by week, month, quarter, or all time
+
+### Response Time
+- **Response time leaderboard** — see who responds fastest and who keeps you waiting
+- **Your response times** — average time you take to reply per person
+- **Their response times** — average time others take to reply to you
+- **Date range filtering** — filter by week, month, quarter, or all time
+
 ### Reels
 - **Instagram Reels leaderboard** — who you share the most Reels with
 - **Sent vs received chart** — horizontal bar chart of Reels exchanges
 - **Summary stats** — total Reels sent, received, unique people
+- **Date range filtering** — filter by week, month, quarter, or all time
+
+### Apple Intelligence (On-Device)
+- **On-device conversation summary** — summarizes your recent messages with each person using Apple's Foundation Models, running entirely on your Apple Silicon — nothing leaves your Mac
+- **System language detection** — responds in your macOS system language automatically
+- **Animated glow border** — Apple Intelligence-style rainbow gradient animation
+- **Graceful availability handling** — shows specific status for downloading, not enabled, or unsupported devices
+- **No API keys needed** — uses the built-in on-device LLM, no cloud services or subscriptions required
 
 ### General
-- **Data caching** — fetches everything once, instant tab switching
+- **Grouped sidebar** — organized into Overview, Contacts, and Analytics sections
+- **Data caching** — split into multiple cache files for efficient memory usage
 - **Sync button** — ⌘R to refetch all data
 - **Secure auth** — Bearer token stored in macOS Keychain
 - **Liquid Glass UI** — native macOS 26 design with `.glassEffect()`
+- **Date range filtering** — week, month, quarter, or all time across analytics views
 
 ## Getting Your API Token
 
@@ -101,10 +128,13 @@ Deeper requires a Beeper Desktop API token to access your messaging data. Here's
 | Tab | What you'll see |
 |---|---|
 | **Dashboard** | Stats overview, connection categories, hourly activity chart, platform ranking |
-| **People** | All contacts ranked by message volume, filterable by connection type |
+| **Today / This Week** | Time-scoped message stats |
+| **People** | All contacts ranked by message volume, filterable by connection type, AI summaries |
 | **Groups** | Most active groups, largest groups, per-platform group lists |
 | **Platforms** | Chat distribution, groups vs DMs breakdown, platform detail cards |
-| **Reels** | Instagram Reels sharing leaderboard |
+| **Phrases** | Word frequency analysis and word cloud with date range filter |
+| **Response Time** | Response time leaderboard with date range filter |
+| **Reels** | Instagram Reels sharing leaderboard with date range filter |
 
 ## Building from Source
 
@@ -145,6 +175,7 @@ Deeper/
     ├── ContentView.swift                 # Sidebar navigation, DataStore wiring
     │
     ├── Models/
+    │   ├── AnalyticsModels.swift         # Phrase, response time, timestamped data models
     │   ├── BeeperModels.swift            # API response types (Chat, Message, User)
     │   ├── MergedPerson.swift            # Cross-platform person model
     │   ├── PlatformInfo.swift            # Platform enum, bridge detection
@@ -152,13 +183,18 @@ Deeper/
     │
     ├── Services/
     │   ├── BeeperAPIClient.swift         # REST API client with pagination
+    │   ├── BeeperOAuthService.swift      # OAuth authentication service
     │   ├── DataStore.swift               # Central data cache + sync engine
     │   ├── PersonMerger.swift            # Cross-platform contact merging
     │   ├── ReelsAnalyzer.swift           # Instagram Reels analysis
+    │   ├── WebSocketManager.swift        # Live WebSocket feed
     │   └── KeychainHelper.swift          # Secure token storage
     │
     ├── ViewModels/
-    │   └── DashboardViewModel.swift      # HourlyActivityPoint model
+    │   ├── DashboardViewModel.swift      # HourlyActivityPoint model
+    │   ├── PeopleViewModel.swift         # People view model
+    │   ├── PlatformsViewModel.swift      # Platforms view model
+    │   └── ReelsViewModel.swift          # Reels view model
     │
     └── Views/
         ├── Dashboard/
@@ -168,13 +204,21 @@ Deeper/
         │   └── FlowLayout.swift          # Wrapping layout for tags
         ├── People/
         │   ├── PeopleView.swift          # People list with category filters
-        │   └── PersonDetailView.swift    # Person detail with platform breakdown
+        │   └── PersonDetailView.swift    # Person detail, AI summary, response times
         ├── Groups/
         │   └── GroupsView.swift          # Group analytics and leaderboard
         ├── Platforms/
         │   └── PlatformsView.swift       # Platform distribution charts
+        ├── Phrases/
+        │   └── PhrasesView.swift         # Word frequency analytics + word cloud
+        ├── ResponseTime/
+        │   └── ResponseTimeView.swift    # Response time leaderboard
         ├── Reels/
         │   └── ReelsView.swift           # Instagram Reels leaderboard
+        ├── TimeRange/
+        │   └── TimeRangeView.swift       # Today / This Week stats
+        ├── Welcome/
+        │   └── WelcomeView.swift         # Welcome / onboarding screen
         └── Settings/
             └── SettingsView.swift        # Token input and connection setup
 ```
@@ -201,6 +245,7 @@ Deeper detects platforms from Beeper bridge account IDs:
 ## Privacy
 
 - **100% local** — Deeper only connects to `localhost:23373` (Beeper Desktop)
+- **On-device AI** — conversation summaries run on Apple Silicon via Foundation Models, never sent to the cloud
 - **No telemetry** — no analytics, no tracking, no external requests
 - **Token in Keychain** — your Beeper auth token is stored in macOS Keychain, not in plaintext
 - **Open source** — audit the code yourself

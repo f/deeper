@@ -310,6 +310,33 @@ final class DataStore {
         )
     }
 
+    // MARK: - Per-person analytics
+
+    func messagesForPerson(_ person: MergedPerson) -> [TimestampedText] {
+        let chatIDs = Set(person.presences.flatMap(\.chatIDs))
+        return rawSentTexts.filter { chatIDs.contains($0.chatID) }
+    }
+
+    func phraseStatsForPerson(_ person: MergedPerson) -> PhraseStats {
+        let msgs = messagesForPerson(person).filter(\.isSender)
+        return Self.computePhraseStats(from: msgs.map(\.text))
+    }
+
+    func responseTimesForPerson(_ person: MergedPerson) -> (myAvg: Double?, theirAvg: Double?) {
+        let name = person.displayName
+        let personResponses = rawResponses.filter { $0.personName == name }
+        let mine = personResponses.filter { $0.isMine }
+        let theirs = personResponses.filter { !$0.isMine }
+        let myAvg = mine.isEmpty ? nil : mine.map(\.responseTimeSec).reduce(0, +) / Double(mine.count)
+        let theirAvg = theirs.isEmpty ? nil : theirs.map(\.responseTimeSec).reduce(0, +) / Double(theirs.count)
+        return (myAvg, theirAvg)
+    }
+
+    func recentConversation(_ person: MergedPerson, limit: Int = 50) -> [TimestampedText] {
+        let msgs = messagesForPerson(person)
+        return msgs.sorted { $0.timestamp < $1.timestamp }.suffix(limit).map { $0 }
+    }
+
     // MARK: - Full sync
 
     func loadIfNeeded() async {
@@ -432,12 +459,15 @@ final class DataStore {
                                 bd.sent += 1
                                 if let text = msg.text, !text.isEmpty {
                                     allSentTexts.append(text)
-                                    timestampedTexts.append(TimestampedText(text: text, timestamp: msg.timestamp))
+                                    timestampedTexts.append(TimestampedText(text: text, timestamp: msg.timestamp, chatID: chat.id, isSender: true))
                                     totalMessageLengths += text.count
                                     sentMessageCount += 1
                                 }
                             } else {
                                 bd.received += 1
+                                if let text = msg.text, !text.isEmpty {
+                                    timestampedTexts.append(TimestampedText(text: text, timestamp: msg.timestamp, chatID: chat.id, isSender: false))
+                                }
                             }
                             let hour = calendar.component(.hour, from: msg.timestamp)
                             hourlyMap[platform, default: [:]][hour, default: 0] += 1

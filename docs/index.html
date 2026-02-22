@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deeper — Messaging Analytics for Beeper</title>
-  <meta name="description" content="A macOS messaging analytics app for Beeper. Visualize your conversations across every platform.">
+  <meta name="description" content="A macOS messaging analytics app for Beeper. Visualize your conversations across every platform. AI-powered conversation summaries, word analytics, response times, and more.">
   <meta property="og:title" content="Deeper — Messaging Analytics for Beeper">
-  <meta property="og:description" content="See who you talk to most, discover your active hours, find ghosting patterns, and explore group dynamics.">
+  <meta property="og:description" content="See who you talk to most, discover your active hours, find ghosting patterns, and get on-device AI conversation summaries — across every platform in Beeper.">
   <meta property="og:image" content="https://raw.githubusercontent.com/f/deeper/main/Deeper/docs/screenshot.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
@@ -345,7 +345,7 @@
     <div class="nav-inner">
       <a href="#" class="nav-brand">
         <img src="./icon.svg" alt="Deeper">
-        <span class="nav-brand-text">Deeper<span class="nav-brand-sub">for Beeper</span></span>
+        <span class="nav-brand-text"></span>Deeper<span class="nav-brand-sub">for Beeper</span></span>
       </a>
       <div class="nav-links">
         <a href="#features">Features</a>
@@ -365,7 +365,7 @@
       Desktop
     </div>
     <h1>Analytics for<br><span class="gradient">every conversation</span></h1>
-    <p>See who you talk to most, discover your active hours, find ghosting patterns, and explore group dynamics — across every platform in Beeper.</p>
+    <p>See who you talk to most, discover your active hours, find ghosting patterns, explore group dynamics, and get <strong>on-device AI conversation summaries</strong> — across every platform in Beeper. No cloud. No API keys. Everything stays on your Mac.</p>
     <div class="hero-buttons">
       <a href="https://github.com/f/deeper/releases/latest" class="btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -472,7 +472,7 @@
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(116, 185, 255, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#74B9FF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <h3>People</h3>
-          <p>Cross-platform contact merging, sent/received breakdowns, ghosting detection, connection type badges, and per-person detail views.</p>
+          <p>Cross-platform contact merging, ghosting detection, per-person response times, AI conversation summaries, and per-person word analytics.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(85, 239, 196, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#55EFC4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
@@ -485,9 +485,24 @@
           <p>Chat distribution donut chart, groups vs DMs breakdown per platform, and detailed platform cards with top contacts.</p>
         </div>
         <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(253, 121, 168, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FD79A8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+          <h3>Phrases</h3>
+          <p>Word frequency analysis, word cloud, total and unique word counts — with date range filtering by week, month, quarter, or all time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(0, 206, 209, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00CED1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <h3>Response Time</h3>
+          <p>See who responds fastest and who keeps you waiting. Per-person average reply times for both sides of the conversation.</p>
+        </div>
+        <div class="feature-card">
           <div class="feature-icon" style="background: rgba(253, 121, 168, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FD79A8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
           <h3>Reels Leaderboard</h3>
-          <p>See who you exchange the most Instagram Reels with. Sent vs received charts and summary stats.</p>
+          <p>See who you exchange the most Instagram Reels with. Sent vs received charts and summary stats with date range filtering.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, rgba(188,130,243,0.2), rgba(255,103,120,0.2), rgba(141,159,255,0.2));"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ai-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#BC82F3"/><stop offset="50%" stop-color="#FF6778"/><stop offset="100%" stop-color="#8D9FFF"/></linearGradient></defs><path d="M12 2l1.09 3.26L16 6l-2.91.74L12 10l-1.09-3.26L8 6l2.91-.74L12 2z"/><path d="M5 15l.66 1.97L8 17.63l-1.76.44L5 20l-.66-1.93L2 17.63l1.76-.44L5 15z"/><path d="M19 11l.66 1.97 2.34.66-1.76.44L19 16l-.66-1.93-2.34-.44 1.76-.66L19 11z"/></svg></div>
+          <h3>Apple Intelligence (On-Device)</h3>
+          <p>Conversation summaries powered by Apple's Foundation Models, running entirely on your Apple Silicon. No cloud, no API keys — your messages never leave your Mac.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(162, 155, 254, 0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A29BFE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9.09 8.26 2 9.27l5 4.87L5.82 21 12 17.77 18.18 21 17 14.14l5-4.87-7.09-1.01L12 2z"/></svg></div>
@@ -580,7 +595,7 @@
         <div class="privacy-card">
           <div class="privacy-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
           <h4>100% Local</h4>
-          <p>Connects only to localhost:23373 — your local Beeper Desktop instance.</p>
+          <p>Connects only to localhost:23373. AI summaries run on-device via Apple Silicon — nothing is ever sent to the cloud.</p>
         </div>
         <div class="privacy-card">
           <div class="privacy-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>

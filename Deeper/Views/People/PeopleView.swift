@@ -85,7 +85,7 @@ struct PeopleView: View {
 
             // MARK: - Detail
             if let person = selectedPerson {
-                PersonDetailView(person: person)
+                PersonDetailView(person: person, store: store)
                     .frame(minWidth: 300)
             } else {
                 Text("Select a person")
