@@ -69,7 +69,7 @@ jobs:
             Or install via Homebrew:
 
             ```
-            brew install f/deeper/deeper
+            brew install f/tap/deeper
             ```
 
       - name: Compute DMG SHA256

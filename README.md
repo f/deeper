@@ -31,7 +31,7 @@ All data stays on your machine. Deeper talks only to your local Beeper Desktop i
 Or install with Homebrew:
 
 ```bash
-brew install f/deeper/deeper
+brew install f/tap/deeper
 ```
 
 > Requires **macOS 26 Tahoe** or later. Beeper Desktop must be running.
