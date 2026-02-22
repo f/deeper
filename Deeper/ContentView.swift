@@ -13,7 +13,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case groups = "Groups"
     case platforms = "Platforms"
     case reels = "Reels"
-    case live = "Live Feed"
 
     var id: String { rawValue }
 
@@ -24,7 +23,6 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .groups: "person.3.sequence.fill"
         case .platforms: "app.connected.to.app.below.fill"
         case .reels: "play.rectangle.fill"
-        case .live: "bolt.fill"
         }
     }
 }
@@ -33,7 +31,6 @@ struct ContentView: View {
     @State private var selection: SidebarItem? = .dashboard
     @State var api: BeeperAPIClient?
     @State var store: DataStore?
-    @State var wsManager: WebSocketManager?
 
     var body: some View {
         Group {
@@ -64,7 +61,6 @@ struct ContentView: View {
                     self.api = client
                     let newStore = DataStore(api: client)
                     self.store = newStore
-                    self.wsManager = WebSocketManager(token: client.token)
                     Task { await newStore.sync() }
                 })
             }
@@ -75,7 +71,6 @@ struct ContentView: View {
                 self.api = client
                 let newStore = DataStore(api: client)
                 self.store = newStore
-                self.wsManager = WebSocketManager(token: token)
                 Task { await newStore.sync() }
             }
         }
@@ -103,8 +98,6 @@ struct ContentView: View {
             PlatformsView(store: store)
         case .reels:
             ReelsView(store: store)
-        case .live:
-            LiveFeedView(wsManager: wsManager ?? WebSocketManager(token: api!.token))
         case nil:
             Text("Select an item from the sidebar")
                 .font(.title2)

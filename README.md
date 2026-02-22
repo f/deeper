@@ -16,6 +16,10 @@
   <a href="#download">Download</a> · <a href="#features">Features</a> · <a href="#how-it-works">How It Works</a> · <a href="#building-from-source">Build</a>
 </p>
 
+<p align="center">
+  <img src="contents/screeenshot.png" width="800" alt="Deeper screenshot">
+</p>
+
 ---
 
 ## What is Deeper?
@@ -68,9 +72,6 @@ brew install f/tap/deeper
 - **Sent vs received chart** — horizontal bar chart of Reels exchanges
 - **Summary stats** — total Reels sent, received, unique people
 
-### Live Feed
-- **Real-time WebSocket** — see new messages, reactions, and read receipts as they happen
-
 ### General
 - **Data caching** — fetches everything once, instant tab switching
 - **Sync button** — ⌘R to refetch all data
@@ -104,7 +105,6 @@ Deeper requires a Beeper Desktop API token to access your messaging data. Here's
 | **Groups** | Most active groups, largest groups, per-platform group lists |
 | **Platforms** | Chat distribution, groups vs DMs breakdown, platform detail cards |
 | **Reels** | Instagram Reels sharing leaderboard |
-| **Live Feed** | Real-time message stream via WebSocket |
 
 ## Building from Source
 
