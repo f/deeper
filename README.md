@@ -155,7 +155,6 @@ Deeper/
     │   ├── DataStore.swift               # Central data cache + sync engine
     │   ├── PersonMerger.swift            # Cross-platform contact merging
     │   ├── ReelsAnalyzer.swift           # Instagram Reels analysis
-    │   ├── WebSocketManager.swift        # Live feed WebSocket connection
     │   └── KeychainHelper.swift          # Secure token storage
     │
     ├── ViewModels/
@@ -176,8 +175,6 @@ Deeper/
         │   └── PlatformsView.swift       # Platform distribution charts
         ├── Reels/
         │   └── ReelsView.swift           # Instagram Reels leaderboard
-        ├── Live/
-        │   └── LiveFeedView.swift        # Real-time WebSocket feed
         └── Settings/
             └── SettingsView.swift        # Token input and connection setup
 ```
