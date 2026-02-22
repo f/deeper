@@ -11,6 +11,7 @@ import Security
 enum KeychainHelper {
     private static let service = "dev.fka.Deeper"
     private static let tokenKey = "beeper_access_token"
+    private static let baseURLKey = "beeper_base_url"
 
     static func saveToken(_ token: String) {
         guard let data = token.data(using: .utf8) else { return }
@@ -47,5 +48,17 @@ enum KeychainHelper {
             kSecAttrAccount as String: tokenKey
         ]
         SecItemDelete(query as CFDictionary)
+    }
+
+    static func saveBaseURL(_ baseURL: String) {
+        UserDefaults.standard.set(baseURL, forKey: baseURLKey)
+    }
+
+    static func loadBaseURL() -> String? {
+        UserDefaults.standard.string(forKey: baseURLKey)
+    }
+
+    static func deleteBaseURL() {
+        UserDefaults.standard.removeObject(forKey: baseURLKey)
     }
 }

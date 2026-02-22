@@ -67,7 +67,8 @@ struct ContentView: View {
         }
         .onAppear {
             if let token = KeychainHelper.loadToken() {
-                let client = BeeperAPIClient(token: token)
+                let baseURL = KeychainHelper.loadBaseURL() ?? "http://localhost:23373"
+                let client = BeeperAPIClient(baseURL: baseURL, token: token)
                 self.api = client
                 let newStore = DataStore(api: client)
                 self.store = newStore

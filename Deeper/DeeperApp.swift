@@ -18,7 +18,7 @@ struct DeeperApp: App {
         .defaultSize(width: 1200, height: 800)
 
         Settings {
-            SettingsView(onConnect: { _ in })
+            SettingsView(onConnect: { _ in }, closeOnDisconnect: true)
                 .frame(minWidth: 500, minHeight: 400)
         }
     }

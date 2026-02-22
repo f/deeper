@@ -5,6 +5,7 @@
 //  Created by Fatih Kadir Akın on 22.02.2026.
 //
 
+import AppKit
 import SwiftUI
 
 extension Notification.Name {
@@ -13,18 +14,19 @@ extension Notification.Name {
 
 struct SettingsView: View {
     var onConnect: (BeeperAPIClient) -> Void
+    var closeOnDisconnect: Bool = false
     @Environment(\.openURL) private var openURL
 
-    @State private var token: String = ""
-    @State private var isConnecting = false
     @State private var isAuthorizing = false
     @State private var isCheckingAPI = false
     @State private var isAPIAvailable = false
+    @State private var token: String = ""
+    @State private var baseURL: String = KeychainHelper.loadBaseURL() ?? "http://localhost:23373"
+    @State private var isConnecting = false
     @State private var connectionInfo: ConnectInfoResponse?
     @State private var error: String?
     @State private var hasExistingToken = false
-    @State private var showAdvanced = false
-    @FocusState private var isTokenFieldFocused: Bool
+    @State private var showAdvancedWindow = false
 
     var body: some View {
         ScrollView {
@@ -74,14 +76,14 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             HStack(spacing: 8) {
-                                Button("Open Beeper Setup") {
+                                Button("Open Beeper") {
                                     if let url = URL(string: "beeper://connect") {
                                         openURL(url)
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
 
-                                Button("Check Again") {
+                                Button("Refresh") {
                                     Task { await refreshAPIAvailability() }
                                 }
                                 .buttonStyle(.bordered)
@@ -102,51 +104,10 @@ struct SettingsView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isAuthorizing || isConnecting || isCheckingAPI || !isAPIAvailable)
 
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showAdvanced = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            isTokenFieldFocused = true
-                        }
-                    } label: {
-                        HStack {
-                            Text("Advanced: Connect with token")
-                                .font(.caption)
-                            Spacer()
-                            Image(systemName: showAdvanced ? "chevron.down" : "chevron.right")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        .contentShape(Rectangle())
+                    Button("Advanced") {
+                        showAdvancedWindow = true
                     }
-                    .buttonStyle(.plain)
-
-                    if showAdvanced {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Use this only if one-tap connection does not work.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            HStack(spacing: 8) {
-                                SecureField("Paste access token", text: $token)
-                                    .textFieldStyle(.roundedBorder)
-                                    .focused($isTokenFieldFocused)
-                                    .onSubmit { connect() }
-
-                                Button(action: connect) {
-                                    if isConnecting {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                    } else {
-                                        Text("Connect")
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(token.isEmpty || isConnecting || isAuthorizing || isCheckingAPI || !isAPIAvailable)
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
+                    .buttonStyle(.bordered)
 
                     Link("Need help? Open setup guide", destination: URL(string: "https://developers.beeper.com/desktop-api")!)
                         .font(.caption)
@@ -200,12 +161,19 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .onAppear {
             Task {
+                baseURL = KeychainHelper.loadBaseURL() ?? "http://localhost:23373"
                 await refreshAPIAvailability()
                 if let saved = KeychainHelper.loadToken() {
                     token = saved
                     hasExistingToken = true
                     testConnection(token: saved)
                 }
+            }
+        }
+        .sheet(isPresented: $showAdvancedWindow) {
+            AdvancedConnectView(initialBaseURL: baseURL, initialToken: token) { testedBaseURL, testedToken, testedInfo in
+                connectWithVerifiedCredentials(baseURL: testedBaseURL, token: testedToken, info: testedInfo)
+                showAdvancedWindow = false
             }
         }
     }
@@ -217,10 +185,11 @@ struct SettingsView: View {
 
         Task {
             do {
-                let client = BeeperAPIClient(token: token)
-                let info = try await validateConnection(token: token)
+                let client = BeeperAPIClient(baseURL: baseURL, token: token)
+                let info = try await validateConnection(baseURL: baseURL, token: token)
                 connectionInfo = info
                 KeychainHelper.saveToken(token)
+                KeychainHelper.saveBaseURL(baseURL)
                 hasExistingToken = true
                 onConnect(client)
             } catch {
@@ -233,8 +202,8 @@ struct SettingsView: View {
     private func testConnection(token: String) {
         Task {
             do {
-                let client = BeeperAPIClient(token: token)
-                let info = try await validateConnection(token: token)
+                let client = BeeperAPIClient(baseURL: baseURL, token: token)
+                let info = try await validateConnection(baseURL: baseURL, token: token)
                 connectionInfo = info
                 onConnect(client)
             } catch {
@@ -253,7 +222,7 @@ struct SettingsView: View {
                     isAuthorizing = false
                     return
                 }
-                let oauth = BeeperOAuthService()
+                let oauth = BeeperOAuthService(baseURL: baseURL)
                 let issuedToken = try await oauth.authorizeAndGetToken()
                 token = issuedToken
                 isAuthorizing = false
@@ -278,7 +247,7 @@ struct SettingsView: View {
         defer { isCheckingAPI = false }
 
         do {
-            let oauth = BeeperOAuthService()
+            let oauth = BeeperOAuthService(baseURL: baseURL)
             _ = try await oauth.fetchInfo()
             isAPIAvailable = true
         } catch {
@@ -286,18 +255,182 @@ struct SettingsView: View {
         }
     }
 
-    private func validateConnection(token: String) async throws -> ConnectInfoResponse {
-        let client = BeeperAPIClient(token: token)
+    private func validateConnection(baseURL: String, token: String) async throws -> ConnectInfoResponse {
+        let client = BeeperAPIClient(baseURL: baseURL, token: token)
         _ = try await client.getAccounts()
         return try await client.getInfo()
     }
 
+    private func connectWithVerifiedCredentials(baseURL: String, token: String, info: ConnectInfoResponse) {
+        self.baseURL = baseURL
+        self.token = token
+        self.connectionInfo = info
+        self.error = nil
+        self.hasExistingToken = true
+
+        KeychainHelper.saveBaseURL(baseURL)
+        KeychainHelper.saveToken(token)
+
+        let client = BeeperAPIClient(baseURL: baseURL, token: token)
+        onConnect(client)
+    }
+
     private func disconnect() {
         KeychainHelper.deleteToken()
+        KeychainHelper.deleteBaseURL()
         token = ""
+        baseURL = "http://localhost:23373"
         connectionInfo = nil
         hasExistingToken = false
         NotificationCenter.default.post(name: .deeperDidLogout, object: nil)
+        if closeOnDisconnect {
+            NSApplication.shared.keyWindow?.performClose(nil)
+        }
+    }
+}
+
+struct AdvancedConnectView: View {
+    let initialBaseURL: String
+    let initialToken: String
+    let onConnect: (String, String, ConnectInfoResponse) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var baseURL: String
+    @State private var token: String
+    @State private var testedBaseURL: String?
+    @State private var testedToken: String?
+    @State private var testedInfo: ConnectInfoResponse?
+    @State private var isTesting = false
+    @State private var isConnecting = false
+    @State private var error: String?
+    @FocusState private var tokenFocused: Bool
+
+    init(initialBaseURL: String, initialToken: String, onConnect: @escaping (String, String, ConnectInfoResponse) -> Void) {
+        self.initialBaseURL = initialBaseURL
+        self.initialToken = initialToken
+        self.onConnect = onConnect
+        _baseURL = State(initialValue: initialBaseURL)
+        _token = State(initialValue: initialToken)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Advanced Connection")
+                .font(.headline)
+            Text("Set a custom Base URL and access token. Test first, then connect.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Base URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("http://localhost:23373", text: $baseURL)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Access Token")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                SecureField("Paste access token", text: $token)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($tokenFocused)
+                    .onSubmit { Task { await testConnection() } }
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    Task { await testConnection() }
+                } label: {
+                    if isTesting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Test Connection")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isTesting || isConnecting || token.isEmpty || baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button("Connect") {
+                    connect()
+                }
+                .buttonStyle(.bordered)
+                .disabled(isConnecting || !isTestStillValid)
+
+                Spacer()
+
+                Button("Close") {
+                    dismiss()
+                }
+                .buttonStyle(.borderless)
+            }
+
+            if let testedInfo {
+                Label("Connection looks good", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                Text("Server: \(testedInfo.server.base_url)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 520)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                tokenFocused = true
+            }
+        }
+    }
+
+    private var normalizedBaseURL: String {
+        baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isTestStillValid: Bool {
+        testedInfo != nil && testedBaseURL == normalizedBaseURL && testedToken == token
+    }
+
+    private func testConnection() async {
+        error = nil
+        testedInfo = nil
+        isTesting = true
+        defer { isTesting = false }
+
+        do {
+            let client = BeeperAPIClient(baseURL: normalizedBaseURL, token: token)
+            _ = try await client.getAccounts()
+            let info = try await client.getInfo()
+            testedInfo = info
+            testedBaseURL = normalizedBaseURL
+            testedToken = token
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func connect() {
+        guard let testedInfo else {
+            error = "Test the connection first."
+            return
+        }
+        guard isTestStillValid else {
+            error = "Connection details changed. Please test again."
+            return
+        }
+
+        isConnecting = true
+        onConnect(normalizedBaseURL, token, testedInfo)
+        dismiss()
     }
 }
 
