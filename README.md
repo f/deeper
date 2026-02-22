@@ -77,6 +77,20 @@ brew install f/tap/deeper
 - **Secure auth** — Bearer token stored in macOS Keychain
 - **Liquid Glass UI** — native macOS 26 design with `.glassEffect()`
 
+## Getting Your API Token
+
+Deeper requires a Beeper Desktop API token to access your messaging data. Here's how to set it up:
+
+1. Open **Beeper Desktop** and go to **Settings**
+2. Navigate to the **Developers** tab in the sidebar
+3. Toggle **Beeper Desktop API** to **On** (this enables the local API on port `23373`)
+4. Enable **Start on launch** so the API is always available
+5. Scroll down to the **Approved Connections** section
+6. Click the **+** button on the right to generate a new API token
+7. Copy the generated token — you'll paste it into Deeper on first launch
+
+> The API runs entirely on your local machine at `http://localhost:23373`. No data leaves your computer.
+
 ## How It Works
 
 1. **Open Beeper Desktop** — Deeper connects to Beeper's local API at `localhost:23373`.
