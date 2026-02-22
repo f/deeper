@@ -78,12 +78,12 @@ jobs:
 
       - name: Update Homebrew Cask tap
         env:
-          TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+          TAP_REPO_TOKEN_HOMEBREW: ${{ secrets.TAP_REPO_TOKEN_HOMEBREW }}
           VERSION: ${{ steps.version.outputs.tag }}
           SHA256: ${{ steps.sha.outputs.sha256 }}
         run: |
           VERSION_NUM="${VERSION#v}"
-          git clone https://x-access-token:${TAP_REPO_TOKEN}@github.com/f/homebrew-tap.git tap
+          git clone https://x-access-token:${TAP_REPO_TOKEN_HOMEBREW}@github.com/f/homebrew-tap.git tap
           mkdir -p tap/Casks
           cat > tap/Casks/deeper.rb << EOF
           cask "deeper" do
