@@ -8,13 +8,30 @@
 import SwiftUI
 import Charts
 
+enum ReelsSortOption: String, CaseIterable, Identifiable {
+    case total = "Total"
+    case sent = "Most Sent"
+    case received = "Most Received"
+    var id: String { rawValue }
+}
+
 struct ReelsView: View {
     var store: DataStore
     @State private var dateRange: AnalyticsDateRange = .all
+    @State private var sortOption: ReelsSortOption = .total
 
     private var filteredEntries: [ReelShareEntry] {
-        guard let cutoff = dateRange.cutoffDate else { return store.reelEntries }
-        return store.reelEntries.filter { ($0.lastReelDate ?? .distantPast) >= cutoff }
+        let entries: [ReelShareEntry]
+        if let cutoff = dateRange.cutoffDate {
+            entries = store.reelEntries.filter { ($0.lastReelDate ?? .distantPast) >= cutoff }
+        } else {
+            entries = store.reelEntries
+        }
+        switch sortOption {
+        case .total: return entries.sorted { $0.totalReels > $1.totalReels }
+        case .sent: return entries.sorted { $0.reelsSent > $1.reelsSent }
+        case .received: return entries.sorted { $0.reelsReceived > $1.reelsReceived }
+        }
     }
 
     var body: some View {
@@ -171,6 +188,15 @@ struct ReelsView: View {
             .padding(24)
         }
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Picker("Sort", selection: $sortOption) {
+                    ForEach(ReelsSortOption.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 260)
+            }
             ToolbarItem(placement: .automatic) {
                 Picker("Range", selection: $dateRange) {
                     ForEach(AnalyticsDateRange.allCases) { range in

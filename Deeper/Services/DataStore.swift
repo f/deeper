@@ -368,6 +368,12 @@ final class DataStore {
             loadingProgress = "Computing platform stats..."
             platformStats = PersonMerger.computePlatformStats(chats: fetchedChats)
 
+            // Counters for today's messages (accumulated during group + DM loops)
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: Date())
+            var todaySent = 0
+            var todayReceived = 0
+
             // 4. Group stats + message analysis
             loadingProgress = "Analyzing groups..."
             let groupChats = fetchedChats.filter { $0.type == .group }
@@ -396,8 +402,10 @@ final class DataStore {
                         for msg in response.items {
                             if msg.isSender == true {
                                 sent += 1
+                                if msg.timestamp >= startOfDay { todaySent += 1 }
                             } else {
                                 received += 1
+                                if msg.timestamp >= startOfDay { todayReceived += 1 }
                             }
                             total += 1
                             if total >= limit { break }
@@ -434,7 +442,6 @@ final class DataStore {
             // 5. Analyze DMs: sent/received + hourly + phrases + response times
             let dmChats = fetchedChats.filter { $0.type == .single }
             var breakdowns: [String: PersonMerger.ChatMessageBreakdown] = [:]
-            let calendar = Calendar.current
             var hourlyMap: [Platform: [Int: Int]] = [:]
             var allSentTexts: [String] = []
             var timestampedTexts: [TimestampedText] = []
@@ -457,6 +464,7 @@ final class DataStore {
                         for msg in response.items {
                             if msg.isSender == true {
                                 bd.sent += 1
+                                if msg.timestamp >= startOfDay { todaySent += 1 }
                                 if let text = msg.text, !text.isEmpty {
                                     allSentTexts.append(text)
                                     timestampedTexts.append(TimestampedText(text: text, timestamp: msg.timestamp, chatID: chat.id, isSender: true))
@@ -465,6 +473,7 @@ final class DataStore {
                                 }
                             } else {
                                 bd.received += 1
+                                if msg.timestamp >= startOfDay { todayReceived += 1 }
                                 if let text = msg.text, !text.isEmpty {
                                     timestampedTexts.append(TimestampedText(text: text, timestamp: msg.timestamp, chatID: chat.id, isSender: false))
                                 }
@@ -613,24 +622,9 @@ final class DataStore {
                 platformStats[i].topContacts = Array(contactsOnPlatform.prefix(10))
             }
 
-            // 9. Today's messages
-            loadingProgress = "Counting today's messages..."
-            let startOfDay = calendar.startOfDay(for: Date())
-
-            async let sentTask = api.searchMessages(
-                sender: "me",
-                dateAfter: startOfDay,
-                limit: 1
-            )
-            async let receivedTask = api.searchMessages(
-                sender: "others",
-                dateAfter: startOfDay,
-                limit: 1
-            )
-
-            let (sentResponse, receivedResponse) = try await (sentTask, receivedTask)
-            messagesSentToday = sentResponse.items.count > 0 ? max(sentResponse.items.count, 1) : 0
-            messagesReceivedToday = receivedResponse.items.count > 0 ? max(receivedResponse.items.count, 1) : 0
+            // 9. Today's messages (counted during group + DM loops above)
+            messagesSentToday = todaySent
+            messagesReceivedToday = todayReceived
 
             // 10. Reels
             loadingProgress = "Analyzing Reels..."
